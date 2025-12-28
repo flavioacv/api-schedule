@@ -1,7 +1,9 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, Post, UseGuards } from '@nestjs/common';
+import { IntegrationTokenGuard } from '../auth/guards/integration-token.guard';
 import { AppointmentsService } from './appointments.service';
 
 @Controller('appointments')
+@UseGuards(IntegrationTokenGuard)
 export class AppointmentsController {
     constructor(private readonly appointmentsService: AppointmentsService) { }
 
