@@ -7,6 +7,10 @@ import { AppointmentsModule } from './appointments/appointments.module';
 import { AuthModule } from './auth/auth.module';
 import { AvailabilityModule } from './availability/availability.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { OrganizationsModule } from './organizations/organizations.module';
+import { ResourcesModule } from './resources/resources.module';
+import { SchedulesModule } from './schedules/schedules.module';
+import { ServicesModule } from './services/services.module';
 
 @Module({
   imports: [
@@ -27,6 +31,10 @@ import { NotificationsModule } from './notifications/notifications.module';
     AppointmentsModule,
     NotificationsModule,
     AuthModule,
+    OrganizationsModule,
+    ResourcesModule,
+    ServicesModule,
+    SchedulesModule,
   ],
   controllers: [AppController],
   providers: [AppService],
