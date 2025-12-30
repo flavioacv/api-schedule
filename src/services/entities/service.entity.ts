@@ -1,6 +1,6 @@
 import { Column, Entity, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
 import { Organization } from '../../organizations/entities/organization.entity';
-import { ResourceType } from '../../resources/entities/resource.entity';
+import { ResourceType } from '../../resources/resource-type.enum';
 
 @Entity()
 export class Service {

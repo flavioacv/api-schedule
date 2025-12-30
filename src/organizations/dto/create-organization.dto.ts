@@ -8,4 +8,8 @@ export class CreateOrganizationDto {
     @IsObject()
     @IsOptional()
     config?: Record<string, any>;
+
+    @IsString()
+    @IsOptional()
+    timezone?: string;
 }

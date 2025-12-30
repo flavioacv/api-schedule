@@ -1,7 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Appointment, AppointmentStatus } from '../appointments/entities/appointment.entity';
+import { AppointmentStatus } from '../appointments/appointment-status.enum';
+import { Appointment } from '../appointments/entities/appointment.entity';
+import { Organization } from '../organizations/entities/organization.entity';
 import { Resource } from '../resources/entities/resource.entity';
 import { Schedule } from '../schedules/entities/schedule.entity';
 import { Service } from '../services/entities/service.entity';
@@ -17,17 +19,32 @@ export class AvailabilityService {
         private serviceRepository: Repository<Service>,
         @InjectRepository(Resource)
         private resourceRepository: Repository<Resource>,
+        @InjectRepository(Organization)
+        private organizationRepository: Repository<Organization>,
     ) { }
 
-    async getAvailableSlots(resourceId: string, dateStr: string, serviceId: string) {
-        // 1. Validate Input
-        const service = await this.serviceRepository.findOne({ where: { id: serviceId } });
-        if (!service) throw new NotFoundException('Service not found');
+    async getAvailableSlots(resourceId: string, dateStr: string, serviceId: string, organizationId: string) {
+        // 0. Validate Date Format
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+            throw new BadRequestException('Invalid date format (expected YYYY-MM-DD)');
+        }
+        const [year, month, day] = dateStr.split('-').map(Number);
+        const date = new Date(year, month - 1, day); // Creates date at 00:00:00 Local Time
 
-        const resource = await this.resourceRepository.findOne({ where: { id: resourceId } });
-        if (!resource) throw new NotFoundException('Resource not found');
+        if (isNaN(date.getTime())) {
+            throw new BadRequestException('Invalid date');
+        }
 
-        const date = new Date(dateStr);
+        // 1. Validate Input & Ownership
+        const service = await this.serviceRepository.findOne({ where: { id: serviceId, organizationId } });
+        if (!service) throw new NotFoundException('Service not found or access denied');
+
+        const resource = await this.resourceRepository.findOne({ where: { id: resourceId, organizationId } });
+        if (!resource) throw new NotFoundException('Resource not found or access denied');
+
+        const organization = await this.organizationRepository.findOne({ where: { id: organizationId } });
+        if (!organization) throw new NotFoundException('Organization not found');
+
         const dayOfWeek = date.getDay();
 
         // 2. Get Working Hours
@@ -89,7 +106,36 @@ export class AvailabilityService {
                 });
 
                 if (activeAppointments.length < resource.capacity) {
-                    slots.push(new Date(currentTime));
+                    // Check if slot is in the past (relative to Organization Timezone)
+                    const nowInOrgTzStr = new Date().toLocaleString('en-US', { timeZone: organization.timezone });
+                    const nowInOrgTz = new Date(nowInOrgTzStr);
+
+                    // Represent the slot time as a generic date object for comparison
+                    const slotDateTimeInOrg = new Date(currentTime);
+
+                    let isPast = false;
+
+                    // Compare Date parts
+                    if (nowInOrgTz.getFullYear() > slotDateTimeInOrg.getFullYear() ||
+                        (nowInOrgTz.getFullYear() === slotDateTimeInOrg.getFullYear() && nowInOrgTz.getMonth() > slotDateTimeInOrg.getMonth()) ||
+                        (nowInOrgTz.getFullYear() === slotDateTimeInOrg.getFullYear() && nowInOrgTz.getMonth() === slotDateTimeInOrg.getMonth() && nowInOrgTz.getDate() > slotDateTimeInOrg.getDate())
+                    ) {
+                        isPast = true;
+                    } else if (
+                        nowInOrgTz.getFullYear() === slotDateTimeInOrg.getFullYear() &&
+                        nowInOrgTz.getMonth() === slotDateTimeInOrg.getMonth() &&
+                        nowInOrgTz.getDate() === slotDateTimeInOrg.getDate()
+                    ) {
+                        // Today. Check time.
+                        if (nowInOrgTz.getHours() > slotDateTimeInOrg.getHours() ||
+                            (nowInOrgTz.getHours() === slotDateTimeInOrg.getHours() && nowInOrgTz.getMinutes() >= slotDateTimeInOrg.getMinutes())) {
+                            isPast = true;
+                        }
+                    }
+
+                    if (!isPast) {
+                        slots.push(new Date(currentTime));
+                    }
                 }
             }
 

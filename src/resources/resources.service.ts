@@ -12,40 +12,38 @@ export class ResourcesService {
         private resourceRepository: Repository<Resource>,
     ) { }
 
-    async create(createResourceDto: CreateResourceDto): Promise<Resource> {
-        const resource = this.resourceRepository.create(createResourceDto);
+    async create(createResourceDto: CreateResourceDto, organizationId: string): Promise<Resource> {
+        const resource = this.resourceRepository.create({
+            ...createResourceDto,
+            organizationId,
+        });
         return await this.resourceRepository.save(resource);
     }
 
-    async findAll(organizationId?: string): Promise<Resource[]> {
-        if (organizationId) {
-            return await this.resourceRepository.find({
-                where: { organizationId },
-            });
-        }
-        return await this.resourceRepository.find();
+    async findAll(organizationId: string): Promise<Resource[]> {
+        return await this.resourceRepository.find({
+            where: { organizationId },
+        });
     }
 
-    async findOne(id: string): Promise<Resource> {
+    async findOne(id: string, organizationId: string): Promise<Resource> {
         const resource = await this.resourceRepository.findOne({
-            where: { id },
+            where: { id, organizationId },
         });
         if (!resource) {
-            throw new NotFoundException(`Resource with ID "${id}" not found`);
+            throw new NotFoundException(`Resource not found or access denied`);
         }
         return resource;
     }
 
-    async update(id: string, updateResourceDto: UpdateResourceDto): Promise<Resource> {
-        const resource = await this.findOne(id);
+    async update(id: string, updateResourceDto: UpdateResourceDto, organizationId: string): Promise<Resource> {
+        const resource = await this.findOne(id, organizationId);
         Object.assign(resource, updateResourceDto);
         return await this.resourceRepository.save(resource);
     }
 
-    async remove(id: string): Promise<void> {
-        const result = await this.resourceRepository.delete(id);
-        if (result.affected === 0) {
-            throw new NotFoundException(`Resource with ID "${id}" not found`);
-        }
+    async remove(id: string, organizationId: string): Promise<void> {
+        const resource = await this.findOne(id, organizationId);
+        await this.resourceRepository.remove(resource);
     }
 }

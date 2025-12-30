@@ -1,5 +1,5 @@
-import { IsEnum, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID, Min } from 'class-validator';
-import { ResourceType } from '../../resources/entities/resource.entity';
+import { IsEnum, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import { ResourceType } from '../../resources/resource-type.enum';
 
 export class CreateServiceDto {
     @IsString()
@@ -23,8 +23,4 @@ export class CreateServiceDto {
     @IsEnum(ResourceType)
     @IsNotEmpty()
     requiredResourceType: ResourceType;
-
-    @IsUUID()
-    @IsNotEmpty()
-    organizationId: string;
 }

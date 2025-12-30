@@ -12,40 +12,38 @@ export class ServicesService {
         private serviceRepository: Repository<Service>,
     ) { }
 
-    async create(createServiceDto: CreateServiceDto): Promise<Service> {
-        const service = this.serviceRepository.create(createServiceDto);
+    async create(createServiceDto: CreateServiceDto, organizationId: string): Promise<Service> {
+        const service = this.serviceRepository.create({
+            ...createServiceDto,
+            organizationId,
+        });
         return await this.serviceRepository.save(service);
     }
 
-    async findAll(organizationId?: string): Promise<Service[]> {
-        if (organizationId) {
-            return await this.serviceRepository.find({
-                where: { organizationId },
-            });
-        }
-        return await this.serviceRepository.find();
+    async findAll(organizationId: string): Promise<Service[]> {
+        return await this.serviceRepository.find({
+            where: { organizationId },
+        });
     }
 
-    async findOne(id: string): Promise<Service> {
+    async findOne(id: string, organizationId: string): Promise<Service> {
         const service = await this.serviceRepository.findOne({
-            where: { id },
+            where: { id, organizationId },
         });
         if (!service) {
-            throw new NotFoundException(`Service with ID "${id}" not found`);
+            throw new NotFoundException(`Service not found or access denied`);
         }
         return service;
     }
 
-    async update(id: string, updateServiceDto: UpdateServiceDto): Promise<Service> {
-        const service = await this.findOne(id);
+    async update(id: string, updateServiceDto: UpdateServiceDto, organizationId: string): Promise<Service> {
+        const service = await this.findOne(id, organizationId);
         Object.assign(service, updateServiceDto);
         return await this.serviceRepository.save(service);
     }
 
-    async remove(id: string): Promise<void> {
-        const result = await this.serviceRepository.delete(id);
-        if (result.affected === 0) {
-            throw new NotFoundException(`Service with ID "${id}" not found`);
-        }
+    async remove(id: string, organizationId: string): Promise<void> {
+        const service = await this.findOne(id, organizationId);
+        await this.serviceRepository.remove(service);
     }
 }

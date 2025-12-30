@@ -2,12 +2,7 @@ import { Column, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn } from 'ty
 import { Appointment } from '../../appointments/entities/appointment.entity';
 import { Organization } from '../../organizations/entities/organization.entity';
 import { Schedule } from '../../schedules/entities/schedule.entity';
-
-export enum ResourceType {
-    STAFF = 'STAFF',
-    ASSET = 'ASSET',
-    SPACE = 'SPACE',
-}
+import { ResourceType } from '../resource-type.enum';
 
 @Entity()
 export class Resource {

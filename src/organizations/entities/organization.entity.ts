@@ -13,6 +13,9 @@ export class Organization {
     @Column({ type: 'jsonb', default: {} })
     config: Record<string, any>;
 
+    @Column({ default: 'America/Sao_Paulo' })
+    timezone: string;
+
     @OneToMany(() => Resource, (resource) => resource.organization)
     resources: Resource[];
 

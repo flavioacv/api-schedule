@@ -1,12 +1,8 @@
-import { Column, Entity, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+import { Organization } from '../../organizations/entities/organization.entity';
 import { Resource } from '../../resources/entities/resource.entity';
 import { Service } from '../../services/entities/service.entity';
-
-export enum AppointmentStatus {
-    PENDING = 'PENDING',
-    CONFIRMED = 'CONFIRMED',
-    CANCELED = 'CANCELED',
-}
+import { AppointmentStatus } from '../appointment-status.enum';
 
 @Entity()
 export class Appointment {
@@ -24,6 +20,13 @@ export class Appointment {
 
     @Column()
     serviceId: string;
+
+    @ManyToOne(() => Organization)
+    @JoinColumn({ name: 'organizationId' })
+    organization: Organization;
+
+    @Column({ nullable: true })
+    organizationId: string;
 
     @Column('timestamp')
     startTime: Date;

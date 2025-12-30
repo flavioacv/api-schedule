@@ -15,11 +15,13 @@ export class IntegrationTokenGuard implements CanActivate {
 
         const integrationToken = await this.authService.validateToken(token);
         if (!integrationToken) {
-            throw new UnauthorizedException('Invalid integration token');
+            throw new UnauthorizedException('Invalid or inactive integration token');
         }
 
-        // Attach organization to request object for easy access in controllers
+        // Crucial for multi-tenancy: attach the organization ID to the request
+        request.organizationId = integrationToken.organizationId;
         request.organization = integrationToken.organization;
+
         return true;
     }
 

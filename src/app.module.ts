@@ -6,6 +6,7 @@ import { AppService } from './app.service';
 import { AppointmentsModule } from './appointments/appointments.module';
 import { AuthModule } from './auth/auth.module';
 import { AvailabilityModule } from './availability/availability.module';
+import { IntegrationTokensModule } from './integration-tokens/integration-tokens.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { OrganizationsModule } from './organizations/organizations.module';
 import { ResourcesModule } from './resources/resources.module';
@@ -35,6 +36,7 @@ import { ServicesModule } from './services/services.module';
     ResourcesModule,
     ServicesModule,
     SchedulesModule,
+    IntegrationTokensModule,
   ],
   controllers: [AppController],
   providers: [AppService],
