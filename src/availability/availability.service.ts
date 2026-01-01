@@ -35,6 +35,43 @@ export class AvailabilityService {
             throw new BadRequestException('Invalid date');
         }
 
+        return this.calculateSlotsForDate(resourceId, date, serviceId, organizationId);
+    }
+
+    async getNextAvailableDays(resourceId: string, serviceId: string, organizationId: string) {
+        const organization = await this.organizationRepository.findOne({ where: { id: organizationId } });
+        if (!organization) throw new NotFoundException('Organization not found');
+
+        // 1. Get current date in organization timezone
+        const nowInOrgTzStr = new Date().toLocaleString('en-US', { timeZone: organization.timezone });
+        const nowInOrgTz = new Date(nowInOrgTzStr);
+
+        // Start from today (at 00:00:00)
+        let checkDate = new Date(nowInOrgTz.getFullYear(), nowInOrgTz.getMonth(), nowInOrgTz.getDate());
+
+        const availableDays = [];
+        const maxDaysToSearch = 30; // Safety limit
+        let daysChecked = 0;
+
+        while (availableDays.length < 5 && daysChecked < maxDaysToSearch) {
+            const slots = await this.calculateSlotsForDate(resourceId, new Date(checkDate), serviceId, organizationId);
+
+            if (slots.length > 0) {
+                const year = checkDate.getFullYear();
+                const month = String(checkDate.getMonth() + 1).padStart(2, '0');
+                const day = String(checkDate.getDate()).padStart(2, '0');
+                availableDays.push(`${year}-${month}-${day}`);
+            }
+
+            // Move to next day
+            checkDate.setDate(checkDate.getDate() + 1);
+            daysChecked++;
+        }
+
+        return availableDays;
+    }
+
+    private async calculateSlotsForDate(resourceId: string, date: Date, serviceId: string, organizationId: string) {
         // 1. Validate Input & Ownership
         const service = await this.serviceRepository.findOne({ where: { id: serviceId, organizationId } });
         if (!service) throw new NotFoundException('Service not found or access denied');
@@ -57,7 +94,6 @@ export class AvailabilityService {
         }
 
         // 3. Get Existing Appointments
-        // We need to query appointments that overlap with the day
         const startOfDay = new Date(date);
         startOfDay.setHours(0, 0, 0, 0);
         const endOfDay = new Date(date);
@@ -71,51 +107,36 @@ export class AvailabilityService {
             .getMany();
 
         // 4. Generate Slots
-        // Logic: Iterate from startTime to endTime in steps
-        // Step size? Usually fixed slots (e.g. 30min) or depends on service duration?
-        // Prompts says: "Fixed Slots: 09:00, 09:30" OR "Duration-based".
-        // For MVP, let's implement Fixed Slots logic based on service duration or a standard interval (e.g. 15min)
-        // Let's assume we scan every 15 minutes to find start times where the service fits.
-
         const slots = [];
-        const interval = 15; // Scan every 15 minutes
+        const totalDuration = service.duration + (service.bufferTime || 0);
+        const interval = service.duration;
 
         let currentTime = this.parseTime(schedule.startTime, date);
         const endTime = this.parseTime(schedule.endTime, date);
         const breakStart = schedule.breakStart ? this.parseTime(schedule.breakStart, date) : null;
         const breakEnd = schedule.breakEnd ? this.parseTime(schedule.breakEnd, date) : null;
 
-        while (currentTime.getTime() + (service.duration * 60000) <= endTime.getTime()) {
-            const slotEnd = new Date(currentTime.getTime() + service.duration * 60000);
+        while (currentTime.getTime() + (totalDuration * 60000) <= endTime.getTime()) {
+            const slotEnd = new Date(currentTime.getTime() + totalDuration * 60000);
 
-            // Check Breaks
             let inBreak = false;
             if (breakStart && breakEnd) {
-                // Overlap logic
                 if (currentTime < breakEnd && slotEnd > breakStart) {
                     inBreak = true;
                 }
             }
 
-            // Check Appointments (Concurrency)
             if (!inBreak) {
                 const activeAppointments = appointments.filter(appt => {
-                    // Check overlap
-                    // appt.start < slotEnd && appt.end > slotStart
                     return appt.startTime < slotEnd && appt.endTime > currentTime;
                 });
 
                 if (activeAppointments.length < resource.capacity) {
-                    // Check if slot is in the past (relative to Organization Timezone)
                     const nowInOrgTzStr = new Date().toLocaleString('en-US', { timeZone: organization.timezone });
                     const nowInOrgTz = new Date(nowInOrgTzStr);
-
-                    // Represent the slot time as a generic date object for comparison
                     const slotDateTimeInOrg = new Date(currentTime);
 
                     let isPast = false;
-
-                    // Compare Date parts
                     if (nowInOrgTz.getFullYear() > slotDateTimeInOrg.getFullYear() ||
                         (nowInOrgTz.getFullYear() === slotDateTimeInOrg.getFullYear() && nowInOrgTz.getMonth() > slotDateTimeInOrg.getMonth()) ||
                         (nowInOrgTz.getFullYear() === slotDateTimeInOrg.getFullYear() && nowInOrgTz.getMonth() === slotDateTimeInOrg.getMonth() && nowInOrgTz.getDate() > slotDateTimeInOrg.getDate())
@@ -126,7 +147,6 @@ export class AvailabilityService {
                         nowInOrgTz.getMonth() === slotDateTimeInOrg.getMonth() &&
                         nowInOrgTz.getDate() === slotDateTimeInOrg.getDate()
                     ) {
-                        // Today. Check time.
                         if (nowInOrgTz.getHours() > slotDateTimeInOrg.getHours() ||
                             (nowInOrgTz.getHours() === slotDateTimeInOrg.getHours() && nowInOrgTz.getMinutes() >= slotDateTimeInOrg.getMinutes())) {
                             isPast = true;
@@ -138,8 +158,6 @@ export class AvailabilityService {
                     }
                 }
             }
-
-            // Increment
             currentTime = new Date(currentTime.getTime() + interval * 60000);
         }
 

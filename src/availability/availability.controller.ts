@@ -21,4 +21,15 @@ export class AvailabilityController {
     ) {
         return this.availabilityService.getAvailableSlots(resourceId, date, serviceId, req.organizationId);
     }
+
+    @Get('next-available-days')
+    @ApiOperation({ summary: 'Consultar próximos 5 dias com horários disponíveis' })
+    @ApiResponse({ status: 200, description: 'Lista de datas retornada com sucesso.' })
+    async getNextAvailableDays(
+        @Query('resourceId') resourceId: string,
+        @Query('serviceId') serviceId: string,
+        @Req() req: any,
+    ) {
+        return this.availabilityService.getNextAvailableDays(resourceId, serviceId, req.organizationId);
+    }
 }
