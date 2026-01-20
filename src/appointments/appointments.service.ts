@@ -32,8 +32,15 @@ export class AppointmentsService {
         });
     }
 
-    async createAppointment(dto: { resourceId: string; serviceId: string; startTime: string }, organizationId: string) {
-        const { resourceId, serviceId, startTime } = dto;
+    async createAppointment(dto: {
+        resourceId: string;
+        serviceId: string;
+        startTime: string;
+        name?: string;
+        number?: string;
+        email?: string;
+    }, organizationId: string) {
+        const { resourceId, serviceId, startTime, name, number, email } = dto;
         const startDate = new Date(startTime);
 
         // 1. Acquire Lock
@@ -75,6 +82,9 @@ export class AppointmentsService {
                 endTime: endDate,
                 status: AppointmentStatus.CONFIRMED,
                 organizationId,
+                name,
+                number,
+                email,
             });
 
             const savedAppointment = await this.appointmentRepository.save(appointment);
@@ -89,7 +99,7 @@ export class AppointmentsService {
         }
     }
 
-    async findAll(organizationId: string, startDate?: string, endDate?: string): Promise<Appointment[]> {
+    async findAll(organizationId: string, startDate?: string, endDate?: string, number?: string): Promise<Appointment[]> {
         const where: any = { organizationId };
 
         if (startDate && endDate) {
@@ -100,6 +110,10 @@ export class AppointmentsService {
         } else if (endDate) {
             // Se apenas endDate for fornecido, podemos filtrar até endDate
             where.startTime = Between(new Date('1970-01-01'), new Date(endDate));
+        }
+
+        if (number) {
+            where.number = number;
         }
 
         return this.appointmentRepository.find({
@@ -121,5 +135,17 @@ export class AppointmentsService {
         const appointment = await this.findOne(id, organizationId);
         appointment.status = AppointmentStatus.CANCELED;
         return this.appointmentRepository.save(appointment);
+    }
+
+    async removeByStartTime(startTime: string, organizationId: string): Promise<void> {
+        const startDate = new Date(startTime);
+        const result = await this.appointmentRepository.delete({
+            startTime: startDate,
+            organizationId,
+        });
+
+        if (result.affected === 0) {
+            throw new NotFoundException(`No appointment found for startTime ${startTime}`);
+        }
     }
 }

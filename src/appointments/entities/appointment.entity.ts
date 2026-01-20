@@ -40,4 +40,13 @@ export class Appointment {
         default: AppointmentStatus.PENDING,
     })
     status: AppointmentStatus;
+
+    @Column({ nullable: true })
+    name: string;
+
+    @Column({ nullable: true })
+    number: string;
+
+    @Column({ nullable: true })
+    email: string;
 }

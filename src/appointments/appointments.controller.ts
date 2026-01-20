@@ -13,7 +13,17 @@ export class AppointmentsController {
     @Post()
     @ApiOperation({ summary: 'Criar um novo agendamento' })
     @ApiResponse({ status: 201, description: 'Agendamento criado com sucesso.' })
-    async create(@Body() body: { resourceId: string; serviceId: string; startTime: string }, @Req() req: any) {
+    async create(
+        @Body() body: {
+            resourceId: string;
+            serviceId: string;
+            startTime: string;
+            name?: string;
+            number?: string;
+            email?: string;
+        },
+        @Req() req: any
+    ) {
         return this.appointmentsService.createAppointment(body, req.organizationId);
     }
 
@@ -22,15 +32,22 @@ export class AppointmentsController {
     async findAll(
         @Query('startDate') startDate: string,
         @Query('endDate') endDate: string,
+        @Query('number') number: string,
         @Req() req: any
     ) {
-        return this.appointmentsService.findAll(req.organizationId, startDate, endDate);
+        return this.appointmentsService.findAll(req.organizationId, startDate, endDate, number);
     }
 
     @Get(':id')
     @ApiOperation({ summary: 'Obter detalhes de um agendamento' })
     async findOne(@Param('id') id: string, @Req() req: any) {
         return this.appointmentsService.findOne(id, req.organizationId);
+    }
+
+    @Delete('by-start-time')
+    @ApiOperation({ summary: 'Deletar um agendamento pela hora de início' })
+    async deleteByStartTime(@Query('startTime') startTime: string, @Req() req: any) {
+        return this.appointmentsService.removeByStartTime(startTime, req.organizationId);
     }
 
     @Delete(':id')
